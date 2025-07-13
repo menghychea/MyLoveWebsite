@@ -839,8 +839,6 @@
             font-size: 0.8rem;
             color: #d946ef;
             font-weight: 600;
-            /* Ensure pointer-events are auto for touch detection */
-            pointer-events: auto;
         }
 
         .puzzle-piece::before {
@@ -866,18 +864,6 @@
             border: 2px solid #f472b6;
             /* Highlight dragged item */
             transition: transform 0.1s ease, box-shadow 0.1s ease, border 0.1s ease;
-            /* When dragging, allow it to float over other elements */
-            position: absolute;
-            z-index: 1000;
-            cursor: grabbing;
-        }
-
-        /* Style for a potential drop target */
-        .puzzle-piece.drop-target-hover {
-            border: 2px dashed #f472b6;
-            /* Dashed pink border for hover feedback */
-            background-color: #fff0f6;
-            /* Slightly lighter background */
         }
 
         .puzzle-image-preview {
@@ -898,7 +884,6 @@
             margin-top: 10px;
             /* Adjust margin */
         }
-
 
         /* Styles for Surprise Page (New) */
         .surprise-container {
@@ -1603,22 +1588,23 @@
                     const piece2Parent = piece2.parentNode;
 
                     if (piece1Parent && piece2Parent) {
-                        // Get current positions in the DOM
-                        const piece1Index = Array.from(piece1Parent.children).indexOf(piece1);
-                        const piece2Index = Array.from(piece2Parent.children).indexOf(piece2);
+                        // Create temporary placeholders
+                        const tempNode1 = document.createElement('div');
+                        const tempNode2 = document.createElement('div');
 
-                        // Swap their positions in the DOM
-                        if (piece1Index > piece2Index) {
-                            piece1Parent.insertBefore(piece1, piece2);
-                            piece2Parent.insertBefore(piece2, piece1Index === piece2Index + 1 ? piece1.nextSibling : piece1);
-                        } else {
-                            piece2Parent.insertBefore(piece2, piece1);
-                            piece1Parent.insertBefore(piece1, piece2Index === piece1Index + 1 ? piece2.nextSibling : piece2);
-                        }
+                        piece1Parent.insertBefore(tempNode1, piece1);
+                        piece2Parent.insertBefore(tempNode2, piece2);
+
+                        // Insert pieces at the placeholder positions
+                        piece1Parent.insertBefore(piece2, tempNode1);
+                        piece2Parent.insertBefore(piece1, tempNode2);
+
+                        // Remove placeholders
+                        tempNode1.parentNode.removeChild(tempNode1);
+                        tempNode2.parentNode.removeChild(tempNode2);
                     }
                 }
             }
-
 
             function createPuzzle() {
                 puzzleArea.innerHTML = ''; // Clear previous pieces
@@ -1674,7 +1660,6 @@
             }
 
             let draggedItem = null; // The piece currently being dragged (mouse or touch)
-            let currentDropTarget = null; // The piece currently being hovered over as a potential drop target
 
             function addPuzzleEventListeners() {
                 // Remove previous listeners to prevent duplicates if createPuzzle is called again
@@ -1689,7 +1674,6 @@
                     piece.removeEventListener('touchstart', handleTouchStart);
                     piece.removeEventListener('touchmove', handleTouchMove);
                     piece.removeEventListener('touchend', handleTouchEnd);
-                    piece.removeEventListener('touchcancel', handleTouchEnd); // Add touchcancel
                 });
 
                 // Add new listeners
@@ -1706,7 +1690,6 @@
                     piece.addEventListener('touchstart', handleTouchStart, { passive: false });
                     piece.addEventListener('touchmove', handleTouchMove, { passive: false });
                     piece.addEventListener('touchend', handleTouchEnd);
-                    piece.addEventListener('touchcancel', handleTouchEnd); // Handle touch being interrupted
                 });
             }
 
@@ -1719,38 +1702,21 @@
                 if (draggedItem) {
                     draggedItem.classList.remove('dragging');
                 }
-                if (currentDropTarget) {
-                    currentDropTarget.classList.remove('drop-target-hover');
-                    currentDropTarget = null;
-                }
                 draggedItem = null;
                 checkPuzzleSolved();
             }
 
             function handleDragOver(e) {
                 e.preventDefault(); // Allow drop
-                const targetElement = e.target.closest('.puzzle-piece');
-                if (targetElement && targetElement !== draggedItem) {
-                    if (currentDropTarget && currentDropTarget !== targetElement) {
-                        currentDropTarget.classList.remove('drop-target-hover');
-                    }
-                    targetElement.classList.add('drop-target-hover');
-                    currentDropTarget = targetElement;
-                } else if (currentDropTarget) {
-                    currentDropTarget.classList.remove('drop-target-hover');
-                    currentDropTarget = null;
-                }
             }
 
             function handleDragEnter(e) {
                 e.preventDefault();
+                // No visual feedback on hover for simplicity and touch compatibility
             }
 
             function handleDragLeave() {
-                if (currentDropTarget) {
-                    currentDropTarget.classList.remove('drop-target-hover');
-                    currentDropTarget = null;
-                }
+                // No visual feedback on hover for simplicity and touch compatibility
             }
 
             function handleDrop(e) {
@@ -1758,22 +1724,21 @@
                 if (draggedItem && draggedItem !== this) {
                     swapPuzzlePieces(draggedItem, this);
                 }
-                // handleDragEnd will clean up and call checkPuzzleSolved()
+                // handleDragEnd will call checkPuzzleSolved()
             }
 
             function handleTouchStart(e) {
-                e.preventDefault(); // Prevent scrolling and default browser touch behavior
+                e.preventDefault(); // Prevent scrolling
                 draggedItem = e.target.closest('.puzzle-piece');
                 if (draggedItem) {
                     draggedItem.classList.add('dragging');
-                    // Store initial position for snapping back
-                    const rect = draggedItem.getBoundingClientRect();
-                    draggedItem.dataset.initialX = rect.left + window.scrollX;
-                    draggedItem.dataset.initialY = rect.top + window.scrollY;
-
-                    // Position it absolutely for dragging
-                    draggedItem.style.left = rect.left + 'px';
-                    draggedItem.style.top = rect.top + 'px';
+                    // Make the dragged item float above others
+                    draggedItem.style.position = 'absolute';
+                    draggedItem.style.zIndex = '1000';
+                    // Position it initially at the touch point
+                    const touch = e.touches[0];
+                    draggedItem.style.left = (touch.clientX - draggedItem.offsetWidth / 2) + 'px';
+                    draggedItem.style.top = (touch.clientY - draggedItem.offsetHeight / 2) + 'px';
                 }
             }
 
@@ -1781,70 +1746,31 @@
                 e.preventDefault(); // Prevent scrolling
                 if (draggedItem) {
                     const touch = e.touches[0];
-                    // Update position to follow finger
                     draggedItem.style.left = (touch.clientX - draggedItem.offsetWidth / 2) + 'px';
                     draggedItem.style.top = (touch.clientY - draggedItem.offsetHeight / 2) + 'px';
-
-                    // Find element under the touch for hover feedback
-                    // Temporarily hide draggedItem to get the element underneath
-                    draggedItem.style.display = 'none';
-                    const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
-                    draggedItem.style.display = ''; // Show it again
-
-                    const potentialDropTarget = targetElement ? targetElement.closest('.puzzle-piece') : null;
-
-                    if (potentialDropTarget && potentialDropTarget !== draggedItem) {
-                        if (currentDropTarget && currentDropTarget !== potentialDropTarget) {
-                            currentDropTarget.classList.remove('drop-target-hover');
-                        }
-                        potentialDropTarget.classList.add('drop-target-hover');
-                        currentDropTarget = potentialDropTarget;
-                    } else if (currentDropTarget) {
-                        currentDropTarget.classList.remove('drop-target-hover');
-                        currentDropTarget = null;
-                    }
                 }
             }
 
             function handleTouchEnd(e) {
                 if (!draggedItem) return;
 
-                // Clean up dragging styles first
+                // Temporarily hide the dragged item to find the element underneath
+                draggedItem.style.display = 'none';
+                const touch = e.changedTouches[0];
+                const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+                draggedItem.style.display = ''; // Show it again
+
+                // Reset styles
                 draggedItem.classList.remove('dragging');
                 draggedItem.style.position = '';
                 draggedItem.style.zIndex = '';
                 draggedItem.style.left = '';
                 draggedItem.style.top = '';
-                if (currentDropTarget) {
-                    currentDropTarget.classList.remove('drop-target-hover');
-                    currentDropTarget = null;
-                }
-
-                // Determine drop target
-                const touch = e.changedTouches[0];
-                // Temporarily hide draggedItem to get the element underneath
-                draggedItem.style.display = 'none';
-                const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
-                draggedItem.style.display = ''; // Show it again
 
                 const dropTargetPiece = targetElement ? targetElement.closest('.puzzle-piece') : null;
 
                 if (dropTargetPiece && dropTargetPiece !== draggedItem) {
-                    // Valid drop target found, perform swap
                     swapPuzzlePieces(draggedItem, dropTargetPiece);
-                } else {
-                    // No valid drop target, or dropped on itself. Snap back to original visual position.
-                    // This is more complex if you want to animate it back to its original grid cell.
-                    // For now, it will just re-insert into the DOM where it was initially.
-                    // The `swapPuzzlePieces` function already handles DOM re-insertion by swapping elements.
-                    // If we want a "snap back to original grid cell if invalid drop", we need to know its original grid cell.
-                    // For simplicity, we'll just let the DOM order be the source of truth if no swap happens.
-                    // The current `swapPuzzlePieces` logic works by re-inserting elements.
-                    // If no swap occurs, the element remains in its current DOM position.
-                    // To truly "snap back" to its *original grid spot*, we would need to revert the DOM change.
-                    // Given the current `swapPuzzlePieces` implementation, if no `dropTargetPiece` is found,
-                    // the `draggedItem` just stays where it was visually dropped, but its `position: absolute` is removed.
-                    // This is acceptable for a basic puzzle.
                 }
 
                 draggedItem = null; // Clear dragged item
