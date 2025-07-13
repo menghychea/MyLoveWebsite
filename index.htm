@@ -857,15 +857,6 @@
             /* Use CSS variable for size */
         }
 
-        /* Style for the piece being dragged */
-        .puzzle-piece.dragging {
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-            transform: scale(1.05);
-            border: 2px solid #f472b6;
-            /* Highlight dragged item */
-            transition: transform 0.1s ease, box-shadow 0.1s ease, border 0.1s ease;
-        }
-
         .puzzle-image-preview {
             width: 100%;
             max-width: 300px;
@@ -884,6 +875,88 @@
             margin-top: 10px;
             /* Adjust margin */
         }
+
+        /* Styles for Surprise Page (New) */
+        .surprise-container {
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            animation: fadeIn 1s ease-out;
+            /* Simple fade-in animation */
+        }
+
+        .surprise-container h1 {
+            color: #d946ef;
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            animation: bounceIn 1s ease-out;
+            /* Bounce effect for title */
+        }
+
+        .surprise-container p {
+            color: #f472b6;
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+        }
+
+        .surprise-emoji {
+            font-size: 5rem;
+            animation: pulse 1.5s infinite ease-in-out;
+            /* Pulsing effect for emoji */
+        }
+
+        /* Keyframe Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes bounceIn {
+            0% {
+                transform: scale(0.3);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 1;
+            }
+
+            70% {
+                transform: scale(0.9);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+
 
         /* Styles for Surprise Page (New) */
         .surprise-container {
@@ -1118,7 +1191,7 @@
 
 <body>
     <!-- Hidden Audio Element -->
-    <audio id="birthdaySong" src="Image/Happy Birthday (Korean Version).mp3" preload="auto"></audio>
+    <audio id="birthdaySong" src="Image/Happy Birthday (Korean Version).mp3" preload="loop"></audio>
     <!-- You can replace the src with a different birthday song URL if you have one. -->
 
     <!-- Homepage Section -->
@@ -1473,7 +1546,7 @@
             const puzzleArea = document.getElementById('puzzleArea');
             const puzzleSolvedImage = document.getElementById('puzzleSolvedImage');
             const puzzleSolvedMessage = document.getElementById('puzzleSolvedMessage');
-            const puzzleImageUrl = 'Image/3.jpg'; // Updated to your image path
+            const puzzleImageUrl = 'Image/3.jpg'; // <--- UPDATED TO YOUR IMAGE PATH
             const puzzlePieces = [];
             const gridSize = 3; // 3x3 puzzle
 
@@ -1581,31 +1654,6 @@
             }
 
             // Puzzle functions
-            // Refactor swap logic into a reusable function
-            function swapPuzzlePieces(piece1, piece2) {
-                if (piece1 && piece2 && piece1 !== piece2) {
-                    const piece1Parent = piece1.parentNode;
-                    const piece2Parent = piece2.parentNode;
-
-                    if (piece1Parent && piece2Parent) {
-                        // Create temporary placeholders
-                        const tempNode1 = document.createElement('div');
-                        const tempNode2 = document.createElement('div');
-
-                        piece1Parent.insertBefore(tempNode1, piece1);
-                        piece2Parent.insertBefore(tempNode2, piece2);
-
-                        // Insert pieces at the placeholder positions
-                        piece1Parent.insertBefore(piece2, tempNode1);
-                        piece2Parent.insertBefore(piece1, tempNode2);
-
-                        // Remove placeholders
-                        tempNode1.parentNode.removeChild(tempNode1);
-                        tempNode2.parentNode.removeChild(tempNode2);
-                    }
-                }
-            }
-
             function createPuzzle() {
                 puzzleArea.innerHTML = ''; // Clear previous pieces
                 puzzleArea.classList.remove('hidden'); // Ensure puzzle area is visible
@@ -1622,9 +1670,10 @@
                 for (let i = 0; i < totalPieces; i++) {
                     const piece = document.createElement('div');
                     piece.classList.add('puzzle-piece');
-                    piece.draggable = true; // Enable native drag for mouse
+                    piece.draggable = true;
                     piece.dataset.originalIndex = i; // Store original index
-                    piece.dataset.currentIndex = pieceOrder[i]; // Store shuffled index (though DOM order is primary check)
+                    // Use the shuffled index for initial display
+                    piece.dataset.currentIndex = pieceOrder[i];
 
                     // Calculate background position for each piece based on its *original* position
                     const originalRow = Math.floor(i / gridSize);
@@ -1649,6 +1698,7 @@
                 puzzleArea.innerHTML = ''; // Clear again to re-append in shuffled order
                 shuffledElements.forEach(el => puzzleArea.appendChild(el));
 
+
                 addPuzzleEventListeners();
             }
 
@@ -1659,7 +1709,7 @@
                 }
             }
 
-            let draggedItem = null; // The piece currently being dragged (mouse or touch)
+            let draggedItem = null;
 
             function addPuzzleEventListeners() {
                 // Remove previous listeners to prevent duplicates if createPuzzle is called again
@@ -1670,26 +1720,16 @@
                     piece.removeEventListener('dragenter', handleDragEnter);
                     piece.removeEventListener('dragleave', handleDragLeave);
                     piece.removeEventListener('drop', handleDrop);
-
-                    piece.removeEventListener('touchstart', handleTouchStart);
-                    piece.removeEventListener('touchmove', handleTouchMove);
-                    piece.removeEventListener('touchend', handleTouchEnd);
                 });
 
                 // Add new listeners
                 puzzlePieces.forEach(piece => {
-                    // Mouse events
                     piece.addEventListener('dragstart', handleDragStart);
                     piece.addEventListener('dragend', handleDragEnd);
                     piece.addEventListener('dragover', handleDragOver);
                     piece.addEventListener('dragenter', handleDragEnter);
                     piece.addEventListener('dragleave', handleDragLeave);
                     piece.addEventListener('drop', handleDrop);
-
-                    // Touch events (passive: false to allow preventDefault)
-                    piece.addEventListener('touchstart', handleTouchStart, { passive: false });
-                    piece.addEventListener('touchmove', handleTouchMove, { passive: false });
-                    piece.addEventListener('touchend', handleTouchEnd);
                 });
             }
 
@@ -1699,9 +1739,7 @@
             }
 
             function handleDragEnd() {
-                if (draggedItem) {
-                    draggedItem.classList.remove('dragging');
-                }
+                draggedItem.classList.remove('dragging');
                 draggedItem = null;
                 checkPuzzleSolved();
             }
@@ -1712,69 +1750,32 @@
 
             function handleDragEnter(e) {
                 e.preventDefault();
-                // No visual feedback on hover for simplicity and touch compatibility
+                if (this !== draggedItem) {
+                    this.style.opacity = '0.5'; // Visual feedback for drag over
+                }
             }
 
             function handleDragLeave() {
-                // No visual feedback on hover for simplicity and touch compatibility
+                this.style.opacity = '1';
             }
 
             function handleDrop(e) {
                 e.preventDefault();
+                this.style.opacity = '1';
+
                 if (draggedItem && draggedItem !== this) {
-                    swapPuzzlePieces(draggedItem, this);
+                    const draggedOriginalIndex = parseInt(draggedItem.dataset.originalIndex);
+                    const targetOriginalIndex = parseInt(this.dataset.originalIndex);
+
+                    // Swap the actual DOM elements
+                    const tempNode = document.createElement('div'); // Temporary placeholder
+                    draggedItem.parentNode.insertBefore(tempNode, draggedItem);
+                    this.parentNode.insertBefore(draggedItem, this);
+                    tempNode.parentNode.insertBefore(this, tempNode);
+                    tempNode.parentNode.removeChild(tempNode);
+
+                    // No need to update `currentIndex` data attributes, as `checkPuzzleSolved` now relies on DOM order
                 }
-                // handleDragEnd will call checkPuzzleSolved()
-            }
-
-            function handleTouchStart(e) {
-                e.preventDefault(); // Prevent scrolling
-                draggedItem = e.target.closest('.puzzle-piece');
-                if (draggedItem) {
-                    draggedItem.classList.add('dragging');
-                    // Make the dragged item float above others
-                    draggedItem.style.position = 'absolute';
-                    draggedItem.style.zIndex = '1000';
-                    // Position it initially at the touch point
-                    const touch = e.touches[0];
-                    draggedItem.style.left = (touch.clientX - draggedItem.offsetWidth / 2) + 'px';
-                    draggedItem.style.top = (touch.clientY - draggedItem.offsetHeight / 2) + 'px';
-                }
-            }
-
-            function handleTouchMove(e) {
-                e.preventDefault(); // Prevent scrolling
-                if (draggedItem) {
-                    const touch = e.touches[0];
-                    draggedItem.style.left = (touch.clientX - draggedItem.offsetWidth / 2) + 'px';
-                    draggedItem.style.top = (touch.clientY - draggedItem.offsetHeight / 2) + 'px';
-                }
-            }
-
-            function handleTouchEnd(e) {
-                if (!draggedItem) return;
-
-                // Temporarily hide the dragged item to find the element underneath
-                draggedItem.style.display = 'none';
-                const touch = e.changedTouches[0];
-                const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
-                draggedItem.style.display = ''; // Show it again
-
-                // Reset styles
-                draggedItem.classList.remove('dragging');
-                draggedItem.style.position = '';
-                draggedItem.style.zIndex = '';
-                draggedItem.style.left = '';
-                draggedItem.style.top = '';
-
-                const dropTargetPiece = targetElement ? targetElement.closest('.puzzle-piece') : null;
-
-                if (dropTargetPiece && dropTargetPiece !== draggedItem) {
-                    swapPuzzlePieces(draggedItem, dropTargetPiece);
-                }
-
-                draggedItem = null; // Clear dragged item
-                checkPuzzleSolved(); // Check if puzzle is solved
             }
 
 
