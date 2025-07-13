@@ -857,6 +857,15 @@
             /* Use CSS variable for size */
         }
 
+        /* Style for the piece being dragged */
+        .puzzle-piece.dragging {
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            transform: scale(1.05);
+            border: 2px solid #f472b6;
+            /* Highlight dragged item */
+            transition: transform 0.1s ease, box-shadow 0.1s ease, border 0.1s ease;
+        }
+
         .puzzle-image-preview {
             width: 100%;
             max-width: 300px;
