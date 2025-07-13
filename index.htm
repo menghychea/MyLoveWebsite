@@ -839,6 +839,8 @@
             font-size: 0.8rem;
             color: #d946ef;
             font-weight: 600;
+            /* Ensure pointer-events are auto for touch detection */
+            pointer-events: auto;
         }
 
         .puzzle-piece::before {
@@ -864,6 +866,18 @@
             border: 2px solid #f472b6;
             /* Highlight dragged item */
             transition: transform 0.1s ease, box-shadow 0.1s ease, border 0.1s ease;
+            /* When dragging, allow it to float over other elements */
+            position: absolute;
+            z-index: 1000;
+            cursor: grabbing;
+        }
+
+        /* Style for a potential drop target */
+        .puzzle-piece.drop-target-hover {
+            border: 2px dashed #f472b6;
+            /* Dashed pink border for hover feedback */
+            background-color: #fff0f6;
+            /* Slightly lighter background */
         }
 
         .puzzle-image-preview {
@@ -884,6 +898,7 @@
             margin-top: 10px;
             /* Adjust margin */
         }
+
 
         /* Styles for Surprise Page (New) */
         .surprise-container {
