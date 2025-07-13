@@ -857,6 +857,36 @@
             /* Use CSS variable for size */
         }
 
+        .puzzle-piece.empty {
+            background-image: none !important;
+            /* No background image for empty piece */
+            background-color: #f0f0f0;
+            /* Light grey for empty slot */
+            cursor: grab;
+            /* Empty slot is also draggable */
+        }
+
+        .puzzle-piece.dragging {
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            transform: scale(0.9);
+            /* Slightly smaller when dragged */
+            border: 2px solid #f472b6;
+            /* Highlight dragged item */
+            transition: none;
+            /* No transition during drag */
+            position: relative;
+            /* Keep it in flow during drag for simpler drop */
+            z-index: 1000;
+            cursor: grabbing;
+        }
+
+        .puzzle-piece.drop-target-hover {
+            background-color: #dcfce7;
+            /* Light green hover for valid drop target */
+            border: 2px solid #22c55e;
+            /* Green border */
+        }
+
         .puzzle-image-preview {
             width: 100%;
             max-width: 300px;
@@ -875,87 +905,6 @@
             margin-top: 10px;
             /* Adjust margin */
         }
-
-        /* Styles for Surprise Page (New) */
-        .surprise-container {
-            background-color: #ffffff;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            padding: 40px;
-            max-width: 600px;
-            width: 100%;
-            text-align: center;
-            animation: fadeIn 1s ease-out;
-            /* Simple fade-in animation */
-        }
-
-        .surprise-container h1 {
-            color: #d946ef;
-            font-size: 3.5rem;
-            margin-bottom: 20px;
-            animation: bounceIn 1s ease-out;
-            /* Bounce effect for title */
-        }
-
-        .surprise-container p {
-            color: #f472b6;
-            font-size: 1.5rem;
-            margin-bottom: 30px;
-        }
-
-        .surprise-emoji {
-            font-size: 5rem;
-            animation: pulse 1.5s infinite ease-in-out;
-            /* Pulsing effect for emoji */
-        }
-
-        /* Keyframe Animations */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes bounceIn {
-            0% {
-                transform: scale(0.3);
-                opacity: 0;
-            }
-
-            50% {
-                transform: scale(1.05);
-                opacity: 1;
-            }
-
-            70% {
-                transform: scale(0.9);
-            }
-
-            100% {
-                transform: scale(1);
-            }
-        }
-
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-            }
-
-            50% {
-                transform: scale(1.1);
-            }
-
-            100% {
-                transform: scale(1);
-            }
-        }
-
 
 
         /* Styles for Surprise Page (New) */
@@ -1191,7 +1140,7 @@
 
 <body>
     <!-- Hidden Audio Element -->
-    <audio id="birthdaySong" src="Image/Happy Birthday (Korean Version).mp3" preload="loop"></audio>
+    <audio id="birthdaySong" src="Image/Happy Birthday (Korean Version).mp3" preload="loop" loop></audio>
     <!-- You can replace the src with a different birthday song URL if you have one. -->
 
     <!-- Homepage Section -->
@@ -1442,7 +1391,7 @@
             </div>
             <!-- Right Column: Image Preview -->
             <div class="puzzle-column">
-                <!-- The puzzleSolvedImage is now visible by default as the target image -->
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Goal:</h3>
                 <img id="puzzleSolvedImage" class="puzzle-image-preview" src="Image/3.jpg" alt="Completed Puzzle">
                 <div id="puzzleSolvedMessage" class="puzzle-solved-message hidden">Puzzle Solved!</div>
             </div>
@@ -1546,7 +1495,7 @@
             const puzzleArea = document.getElementById('puzzleArea');
             const puzzleSolvedImage = document.getElementById('puzzleSolvedImage');
             const puzzleSolvedMessage = document.getElementById('puzzleSolvedMessage');
-            const puzzleImageUrl = 'Image/3.jpg'; // <--- UPDATED TO YOUR IMAGE PATH
+            const puzzleImageUrl = 'Image/3.jpg'; // The image for the puzzle itself
             const puzzlePieces = [];
             const gridSize = 3; // 3x3 puzzle
 
@@ -1657,8 +1606,10 @@
             function createPuzzle() {
                 puzzleArea.innerHTML = ''; // Clear previous pieces
                 puzzleArea.classList.remove('hidden'); // Ensure puzzle area is visible
-                puzzleSolvedImage.classList.remove('hidden'); // Ensure solved image is visible (as target)
                 puzzleSolvedMessage.classList.add('hidden'); // Ensure message is hidden
+
+                // Ensure the solved image is visible when the puzzle starts
+                puzzleSolvedImage.classList.remove('hidden');
 
                 const totalPieces = gridSize * gridSize;
                 puzzlePieces.length = 0; // Clear array
@@ -1686,18 +1637,15 @@
                     piece.style.setProperty('--bg-position', `${bgX}% ${bgY}%`);
                     piece.style.setProperty('--bg-size', `${gridSize * 100}% ${gridSize * 100}%`);
 
-                    puzzleArea.appendChild(piece);
                     puzzlePieces.push(piece);
                 }
 
-                // Reorder the DOM elements based on the shuffled pieceOrder
+                // Append elements to the DOM in the shuffled order
                 const shuffledElements = [];
                 for (let i = 0; i < totalPieces; i++) {
                     shuffledElements[pieceOrder[i]] = puzzlePieces[i];
                 }
-                puzzleArea.innerHTML = ''; // Clear again to re-append in shuffled order
                 shuffledElements.forEach(el => puzzleArea.appendChild(el));
-
 
                 addPuzzleEventListeners();
             }
@@ -1710,72 +1658,207 @@
             }
 
             let draggedItem = null;
+            let touchDraggedPiece = null;
+            let touchOriginalX, touchOriginalY;
+            let touchCurrentTargetPiece = null;
 
             function addPuzzleEventListeners() {
                 // Remove previous listeners to prevent duplicates if createPuzzle is called again
-                puzzlePieces.forEach(piece => {
+                document.querySelectorAll('.puzzle-piece').forEach(piece => {
                     piece.removeEventListener('dragstart', handleDragStart);
                     piece.removeEventListener('dragend', handleDragEnd);
                     piece.removeEventListener('dragover', handleDragOver);
                     piece.removeEventListener('dragenter', handleDragEnter);
                     piece.removeEventListener('dragleave', handleDragLeave);
                     piece.removeEventListener('drop', handleDrop);
+
+                    // Touch event listeners
+                    piece.removeEventListener('touchstart', handleTouchStart, { passive: false });
+                    piece.removeEventListener('touchmove', handleTouchMove, { passive: false });
+                    piece.removeEventListener('touchend', handleTouchEnd);
+                    piece.removeEventListener('touchcancel', handleTouchEnd);
                 });
 
-                // Add new listeners
-                puzzlePieces.forEach(piece => {
+                // Add new listeners to all puzzle pieces on the board
+                const allPuzzlePieces = document.querySelectorAll('#puzzleArea .puzzle-piece');
+                allPuzzlePieces.forEach(piece => {
                     piece.addEventListener('dragstart', handleDragStart);
                     piece.addEventListener('dragend', handleDragEnd);
                     piece.addEventListener('dragover', handleDragOver);
                     piece.addEventListener('dragenter', handleDragEnter);
                     piece.addEventListener('dragleave', handleDragLeave);
                     piece.addEventListener('drop', handleDrop);
+
+                    // Touch event listeners
+                    piece.addEventListener('touchstart', handleTouchStart, { passive: false });
+                    piece.addEventListener('touchmove', handleTouchMove, { passive: false });
+                    piece.addEventListener('touchend', handleTouchEnd);
+                    piece.addEventListener('touchcancel', handleTouchEnd);
                 });
             }
 
+            // --- Mouse Drag and Drop Handlers ---
             function handleDragStart(e) {
                 draggedItem = this;
+                e.dataTransfer.setData('text/plain', this.dataset.originalIndex); // Pass original index
+                e.dataTransfer.effectAllowed = 'move';
                 setTimeout(() => this.classList.add('dragging'), 0);
             }
 
             function handleDragEnd() {
-                draggedItem.classList.remove('dragging');
+                if (draggedItem) {
+                    draggedItem.classList.remove('dragging');
+                }
+                // Remove hover class from all pieces
+                document.querySelectorAll('.puzzle-piece.drop-target-hover').forEach(p => p.classList.remove('drop-target-hover'));
                 draggedItem = null;
-                checkPuzzleSolved();
+                checkPuzzleSolved(); // Check after every potential drop
             }
 
             function handleDragOver(e) {
                 e.preventDefault(); // Allow drop
+                const targetPiece = e.target.closest('.puzzle-piece');
+                if (targetPiece && targetPiece !== draggedItem) {
+                    e.dataTransfer.dropEffect = 'move';
+                    // Remove hover from previous target if any
+                    document.querySelectorAll('.puzzle-piece.drop-target-hover').forEach(p => p.classList.remove('drop-target-hover'));
+                    targetPiece.classList.add('drop-target-hover');
+                } else {
+                    e.dataTransfer.dropEffect = 'none';
+                    // Remove hover if not a valid target
+                    document.querySelectorAll('.puzzle-piece.drop-target-hover').forEach(p => p.classList.remove('drop-target-hover'));
+                }
             }
 
             function handleDragEnter(e) {
                 e.preventDefault();
-                if (this !== draggedItem) {
-                    this.style.opacity = '0.5'; // Visual feedback for drag over
-                }
             }
 
             function handleDragLeave() {
-                this.style.opacity = '1';
+                this.classList.remove('drop-target-hover');
             }
 
             function handleDrop(e) {
                 e.preventDefault();
-                this.style.opacity = '1';
+                const droppedOnPiece = e.target.closest('.puzzle-piece');
 
-                if (draggedItem && draggedItem !== this) {
-                    const draggedOriginalIndex = parseInt(draggedItem.dataset.originalIndex);
-                    const targetOriginalIndex = parseInt(this.dataset.originalIndex);
+                if (draggedItem && droppedOnPiece && draggedItem !== droppedOnPiece) {
+                    // Get the current positions in the DOM
+                    const draggedIndex = Array.from(puzzleArea.children).indexOf(draggedItem);
+                    const droppedOnIndex = Array.from(puzzleArea.children).indexOf(droppedOnPiece);
 
-                    // Swap the actual DOM elements
-                    const tempNode = document.createElement('div'); // Temporary placeholder
-                    draggedItem.parentNode.insertBefore(tempNode, draggedItem);
-                    this.parentNode.insertBefore(draggedItem, this);
-                    tempNode.parentNode.insertBefore(this, tempNode);
-                    tempNode.parentNode.removeChild(tempNode);
-
-                    // No need to update `currentIndex` data attributes, as `checkPuzzleSolved` now relies on DOM order
+                    // Perform the swap in the DOM
+                    if (draggedIndex < droppedOnIndex) {
+                        puzzleArea.insertBefore(droppedOnPiece, draggedItem);
+                        puzzleArea.insertBefore(draggedItem, puzzleArea.children[droppedOnIndex]);
+                    } else {
+                        puzzleArea.insertBefore(draggedItem, droppedOnPiece);
+                        puzzleArea.insertBefore(droppedOnPiece, puzzleArea.children[draggedIndex]);
+                    }
+                    console.log('Pieces swapped successfully.');
+                } else {
+                    console.log('Drop failed: no dragged item, or dropped on itself.');
                 }
+                handleDragEnd(); // Clean up
+            }
+
+            // --- Touch Drag and Drop Handlers ---
+            function handleTouchStart(e) {
+                if (e.touches.length === 1) {
+                    touchDraggedPiece = this;
+                    e.preventDefault(); // Prevent scrolling and default browser behavior
+                    touchDraggedPiece.classList.add('dragging');
+
+                    // Store initial position to revert if needed
+                    const rect = touchDraggedPiece.getBoundingClientRect();
+                    touchOriginalX = rect.left;
+                    touchOriginalY = rect.top;
+
+                    // Set position to absolute for dragging visual
+                    touchDraggedPiece.style.position = 'absolute';
+                    touchDraggedPiece.style.zIndex = '1000';
+                    touchDraggedPiece.style.left = rect.left + 'px';
+                    touchDraggedPiece.style.top = rect.top + 'px';
+                }
+            }
+
+            function handleTouchMove(e) {
+                if (touchDraggedPiece) {
+                    e.preventDefault(); // Prevent scrolling
+                    const touch = e.touches[0];
+
+                    // Update position of the dragged piece
+                    const newX = touch.clientX - (touchDraggedPiece.offsetWidth / 2);
+                    const newY = touch.clientY - (touchDraggedPiece.offsetHeight / 2);
+                    touchDraggedPiece.style.left = newX + 'px';
+                    touchDraggedPiece.style.top = newY + 'px';
+
+                    // Find element under the touch for hover feedback
+                    // Temporarily hide dragged piece to find element underneath
+                    touchDraggedPiece.style.display = 'none';
+                    const elementUnderFinger = document.elementFromPoint(touch.clientX, touch.clientY);
+                    touchDraggedPiece.style.display = ''; // Show it again
+
+                    const potentialDropTarget = elementUnderFinger ? elementUnderFinger.closest('.puzzle-piece') : null;
+
+                    // Remove hover from previous target if different
+                    if (touchCurrentTargetPiece && touchCurrentTargetPiece !== potentialDropTarget) {
+                        touchCurrentTargetPiece.classList.remove('drop-target-hover');
+                    }
+
+                    // Add hover to new valid target
+                    if (potentialDropTarget && potentialDropTarget !== touchDraggedPiece) {
+                        potentialDropTarget.classList.add('drop-target-hover');
+                        touchCurrentTargetPiece = potentialDropTarget;
+                    } else {
+                        touchCurrentTargetPiece = null;
+                    }
+                }
+            }
+
+            function handleTouchEnd(e) {
+                if (!touchDraggedPiece) return;
+
+                // Clean up dragging styles first
+                touchDraggedPiece.classList.remove('dragging');
+                touchDraggedPiece.style.position = ''; // Remove absolute positioning
+                touchDraggedPiece.style.zIndex = '';
+                touchDraggedPiece.style.left = '';
+                touchDraggedPiece.style.top = '';
+
+                if (touchCurrentTargetPiece) {
+                    touchCurrentTargetPiece.classList.remove('drop-target-hover');
+                }
+
+                // Determine drop target
+                const touch = e.changedTouches[0];
+                touchDraggedPiece.style.display = 'none'; // Temporarily hide dragged piece
+                const elementUnderFinger = document.elementFromPoint(touch.clientX, touch.clientY);
+                touchDraggedPiece.style.display = ''; // Show it again
+
+                const droppedOnPiece = elementUnderFinger ? elementUnderFinger.closest('.puzzle-piece') : null;
+
+                if (droppedOnPiece && touchDraggedPiece !== droppedOnPiece) {
+                    // Get the current positions in the DOM
+                    const draggedIndex = Array.from(puzzleArea.children).indexOf(touchDraggedPiece);
+                    const droppedOnIndex = Array.from(puzzleArea.children).indexOf(droppedOnPiece);
+
+                    // Perform the swap in the DOM
+                    if (draggedIndex < droppedOnIndex) {
+                        puzzleArea.insertBefore(droppedOnPiece, touchDraggedPiece);
+                        puzzleArea.insertBefore(touchDraggedPiece, puzzleArea.children[droppedOnIndex]);
+                    } else {
+                        puzzleArea.insertBefore(touchDraggedPiece, droppedOnPiece);
+                        puzzleArea.insertBefore(droppedOnPiece, puzzleArea.children[draggedIndex]);
+                    }
+                    console.log('Touch swap successful.');
+                } else {
+                    console.log('Touch drop failed: no valid target or dropped on itself. Piece snaps back to original visual position.');
+                }
+
+                touchDraggedPiece = null; // Clear dragged item
+                touchCurrentTargetPiece = null; // Clear drop target
+                checkPuzzleSolved(); // Check after every potential drop
             }
 
 
@@ -1793,7 +1876,7 @@
 
                 if (solved) {
                     puzzleArea.classList.add('hidden'); // Hide puzzle pieces
-                    puzzleSolvedImage.classList.remove('hidden'); // Ensure solved image is visible
+                    puzzleSolvedImage.classList.remove('hidden'); // Ensure solved image is visible (it should already be)
                     puzzleSolvedMessage.classList.remove('hidden'); // Show solved message
                     // Trigger surprise after a short delay
                     setTimeout(() => {
@@ -1801,10 +1884,10 @@
                     }, 1500); // 1.5 second delay
                 } else {
                     puzzleArea.classList.remove('hidden'); // Ensure puzzle pieces are visible
+                    // puzzleSolvedImage remains visible as the reference image
                     puzzleSolvedMessage.classList.add('hidden'); // Hide solved message
                 }
             }
-
             // Love Notes functions
             function renderLoveNotes() {
                 loveNotesGrid.innerHTML = ''; // Clear existing notes
